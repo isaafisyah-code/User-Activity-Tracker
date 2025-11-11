@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # ------------------------------------
+  # 1. App user tracker
+  # ------------------------------------
+  app:
+    build: .
+    container_name: user-tracker
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_HOST: postgres-db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tracker_db
+      REDIS_HOST: redis-cache:6379
+      JWT_SECRET: "0Jvh/SARIJBvXDHvwRMJXXmiAmp2N2F9pfDypZFgjKo="
+      API_KEY_ENCRYPTION_SECRET: "V68EjP+07pmNa8mhgsmhcdjEb2sv7gf2"
+      
+    depends_on:
+      postgres-db:
+        condition: service_healthy # Menunggu DB sebelum start
+      redis-cache:
+        condition: service_healthy # Menunggu Redis sebelum start
+
+  # ------------------------------------
+  # 2. Database PostgreSQL
+  # ------------------------------------
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: tracker-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tracker_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      
+  # ------------------------------------
+  # 3. Caching & Queue (Redis)
+  # ------------------------------------
+  redis-cache:
+    image: redis:7-alpine
+    container_name: tracker-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
